@@ -42,7 +42,11 @@ def main(mapfile):
         map_content = file.readlines()
 
     # Open output excel sheet
-    MapWb_name = os.path.dirname(mapfile)+"/MapExtract.xlsx"
+    MapWb_name = ""
+    if len(mapfile.split("/")) > 1:
+        MapWb_name = mapfile.split("/")[0]+"-"+mapfile.split("/")[-1]+".xlsx"
+    else:
+        MapWb_name = mapfile.split("/")[0]+".xlsx"
     MapWb = utils.open_excel_out_file(MapWb_name)
     utils.clear_old_excel_rows(MapWb)
 
