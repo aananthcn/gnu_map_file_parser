@@ -1,0 +1,33 @@
+This file captures some rough notes taken by Aananth during his review of *.map files.
+Date: 12 Jun 2021, Saturday
+======================================================================================
+
+Archive member included to satisfy reference by file (symbol) ==> Archives
+	path/objectfile(function)
+
+Allocating common symbols ==> CMN-SYM
+	symbol hex-size path/objectfile
+
+Discarded input sections ==> DiscardedSections
+	.section hex-start hex-size path/objectfile
+
+Memory Configuration ==> MEMORY
+	Mem-name hex-start hex-len
+
+Linker script and memory map ==> MemoryMap
+	          hex-start               name = hex-size
+	.section  hex-start  hex-size  path/objectfile
+	          hex-start               function_hex-start
+	  *fill*  hex-start  hex-size
+	.section  hex-start  hex-size  load address 
+
+LOAD path/objectfile  ==> LOAD files
+START GROUP
+LOAD path/objectfile
+END GROUP
+OUTPUT(path/outfile march)
+LOAD linker stubs
+
+.debug_info
+ <other information below this can be ignored>
+<EOF>
