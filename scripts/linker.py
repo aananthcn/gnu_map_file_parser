@@ -26,6 +26,7 @@ def parse_linker_sections(line1, line2, end, wb):
         sheet['D2'] = "Size (hex)"
         sheet['E2'] = "Size (bytes)"
         sheet['F2'] = "Object File (optional)"
+        sheet['G2'] = "Path (optional)"
         active_rows = 2
     else:
         sheet = wb[sheetname]
@@ -42,7 +43,8 @@ def parse_linker_sections(line1, line2, end, wb):
         sheet['C'+str(row)] = line2.split()[1]
         sheet['D'+str(row)] = line2.split()[2]
         sheet['E'+str(row)] = int(line2.split()[2], 16)
-        sheet['F'+str(row)] = " ".join(line2.split()[3:])
+        sheet['F'+str(row)] = " ".join(line2.split()[3:]).split("/")[-1]
+        sheet['G'+str(row)] = " ".join(line2.split()[3:])
 
     # capture all "fill" bytes
     if len(line2.split()) == 3 and "fill" in line2.split()[0] and utils.is_hex(line2.split()[2]):
@@ -52,7 +54,8 @@ def parse_linker_sections(line1, line2, end, wb):
         sheet['D'+str(row)] = line2.split()[2]
         sheet['E'+str(row)] = int(line2.split()[2], 16)
         if len(line2.split()) > 3:
-            sheet['F'+str(row)] = " ".join(line2.split()[3:])
+            sheet['F'+str(row)] = " ".join(line2.split()[3:]).split("/")[-1]
+            sheet['G'+str(row)] = " ".join(line2.split()[3:])
     
     # capture segments that are printed across 2 lines
     if line1 != None and line2.split()[0][0:2] == "0x":
@@ -63,7 +66,8 @@ def parse_linker_sections(line1, line2, end, wb):
             sheet['D'+str(row)] = line2.split()[1]
             sheet['E'+str(row)] = int(line2.split()[1], 16)
             if len(line2.split()) > 2:
-                sheet['F'+str(row)] = " ".join(line2.split()[2:])
+                sheet['F'+str(row)] = " ".join(line2.split()[2:]).split("/")[-1]
+                sheet['G'+str(row)] = " ".join(line2.split()[2:])
         else:
             print(Fore.RED + line2)
 
