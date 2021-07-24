@@ -50,6 +50,7 @@ def validate_input(wb, xl_file):
 
 
 def parse_linker_section(wb, sheetname):
+    print("Info: Parsing linker sections with size info from input excel sheet")
     lsec = []
     lcol, row = utils.locate_heading_column("Linker Section", wb, sheetname)
     scol, row = utils.locate_heading_column("Size (bytes)", wb, sheetname)
@@ -69,6 +70,7 @@ def parse_linker_section(wb, sheetname):
 
 
 def parse_components(wb, sheetname):
+    print("Info: Parsing component list from input excel sheet")
     components = []
     ccol, row = utils.locate_heading_column("Component", wb, sheetname)
     mcol, row = utils.locate_heading_column("Module", wb, sheetname)
@@ -98,6 +100,7 @@ def parse_components(wb, sheetname):
 
 
 def populate_ram_flash_sections(wb, sheetname):
+    print("Info: Extracting RAM and Flash data from input data")
     rcol, row = utils.locate_heading_column("RAM", wb, sheetname)
     fcol, row = utils.locate_heading_column("Flash", wb, sheetname)
 
@@ -168,7 +171,8 @@ def get_ram_flash_from_ls(obj, ls, ls_list):
                         break
                 # raise error if still not found
                 if not found:
-                    print("Warning:", item["section", "is not part of RAM or Flash!"])
+                    print("Warning:", item["section"], "is not part of RAM or Flash! "+
+                    str(item["size"]) + " bytes goes unaccounted!\n")
     return ram, flash
 
 
@@ -195,6 +199,7 @@ def add_data_to_comp_breakup(name, object, ram, flash):
 
 
 def compute_comp_breakup(components, linker_sections):
+    print("Info: Computing (adding) RAM and Flash data from extracted data")
     ignore = ["h", "E", "ld", "mk"]
 
     for cmp in components:
@@ -225,10 +230,11 @@ def clear_output_sheet(sheet, sheetname):
 
 
 def add_comp_breakup_to_xl(wb):
+    print("Info: Writing computed (RAM, Flash) data to Excel sheet")
     sheetnames = wb.sheetnames
     sheetname = "Output"
     if sheetname not in sheetnames:
-        wb.create_sheet(sheetname, -1)
+        wb.create_sheet(sheetname)
         sheet = wb[sheetname]
         sheet['A1'] = "The data in this sheet are computer generated, any changes will be overwritten!"
         sheet['A2'] = "S.No"
@@ -239,11 +245,19 @@ def add_comp_breakup_to_xl(wb):
     else:
         clear_output_sheet(wb[sheetname], sheetname)
 
+    sheet = wb[sheetname]
+    i = 0
     for key in CompBreakUp:
-        print(key, CompBreakUp[key])
+        i += 1
+        row = i + 2
+        sheet['A'+str(row)] = i
+        sheet['B'+str(row)] = key
+        sheet['C'+str(row)] = ", ".join(CompBreakUp[key]["objects"])
+        sheet['D'+str(row)] = CompBreakUp[key]["ram"]
+        sheet['E'+str(row)] = CompBreakUp[key]["flash"]
 
 def main(xl_file):
-    xlwb = utils.open_excel_out_file(xl_file)
+    xlwb = utils.open_excel_file(xl_file)
     if 0 != validate_input(xlwb, xl_file):
         return -1
     
@@ -253,6 +267,13 @@ def main(xl_file):
 
     compute_comp_breakup(components, link_sects)
     add_comp_breakup_to_xl(xlwb)
+
+    print("Info: Saving Excel sheet and exiting!")
+    try:
+        xlwb.save(xl_file) # save contents before exit
+    except:
+        print("Error: File busy! Maybe it is opened already! Can't save "+ xl_file)
+    xlwb.close()
 
 
 
