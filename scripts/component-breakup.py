@@ -33,6 +33,8 @@ import utils
 MandatorySheets = ["Components", "LinkerSections", "SectionDict"]
 RAM_Sections = []
 FlashSections = []
+CompBreakUp = {}
+
 
 def validate_input(wb, xl_file):
     sheetnames = wb.sheetnames
@@ -143,7 +145,6 @@ def get_ram_flash_from_ls(obj, ls, ls_list):
                 # raise error if still not found
                 if not found:
                     print("Warning:", item["section", "is not part of RAM or Flash!"])
-        print("\t", obj, " RAM:", ram, " Flash:", flash)
     if ls != None:
         for item in ls_list:
             if item["section"].startswith(ls):
@@ -168,29 +169,78 @@ def get_ram_flash_from_ls(obj, ls, ls_list):
                 # raise error if still not found
                 if not found:
                     print("Warning:", item["section", "is not part of RAM or Flash!"])
-        print("\t", "["+ls+"]", " RAM:", ram, " Flash:", flash)
     return ram, flash
 
 
 
+def add_data_to_comp_breakup(name, object, ram, flash):
+    item_exist = False
+    try:
+        if CompBreakUp[name] != None:
+            item_exist = True
+    except KeyError:
+        CompBreakUp[name] = {}
+        CompBreakUp[name]["objects"] = []
+        if object != None:
+            CompBreakUp[name]["objects"].append(object)
+        CompBreakUp[name]["ram"] = ram
+        CompBreakUp[name]["flash"] = flash
+
+    if item_exist:
+        if object != None:
+            CompBreakUp[name]["objects"].append(object)
+        CompBreakUp[name]["ram"] += ram
+        CompBreakUp[name]["flash"] += flash
+
+
+
 def compute_comp_breakup(components, linker_sections):
-    item = {}
-    cmp_brkup = []
     ignore = ["h", "E", "ld", "mk"]
 
     for cmp in components:
-        print(cmp["component"]+"#")
+        add_data_to_comp_breakup(cmp["component"], None, 0, 0)
         if cmp["modules"] != None:
             for mod in cmp["modules"]:
                 if mod != None and mod.split('.')[-1] in ignore:
                     continue
                 mod = mod.split('.')[0]+".o"
                 ram, flash = get_ram_flash_from_ls(mod, None, linker_sections)
+                if ram != 0 or flash != 0:
+                    add_data_to_comp_breakup(cmp["component"], mod, ram, flash)
         if cmp["section"] != None:
             for sec in cmp["section"]:
                 ram, flash = get_ram_flash_from_ls(None, sec, linker_sections)
+                if ram != 0 or flash != 0:
+                    add_data_to_comp_breakup(cmp["component"], sec, ram, flash)
 
 
+
+def clear_output_sheet(sheet, sheetname):
+    header_size = 2 # First row will hold disclaimer, title in 2nd row
+    active_rows = len(sheet['A'])
+    if active_rows < header_size:
+        print("Info: sheet \""+sheetname+"\" is new / fresh! So, not clearing old data!")
+        return
+    sheet.delete_rows(header_size+1, active_rows)
+
+
+def add_comp_breakup_to_xl(wb):
+    sheetnames = wb.sheetnames
+    sheetname = "Output"
+    if sheetname not in sheetnames:
+        wb.create_sheet(sheetname, -1)
+        sheet = wb[sheetname]
+        sheet['A1'] = "The data in this sheet are computer generated, any changes will be overwritten!"
+        sheet['A2'] = "S.No"
+        sheet['B2'] = "Component"
+        sheet['C2'] = "Objects"
+        sheet['D2'] = "RAM (bytes)"
+        sheet['E2'] = "Flash (bytes)"
+    else:
+        clear_output_sheet(wb[sheetname], sheetname)
+
+    for key in CompBreakUp:
+        print(key, CompBreakUp[key])
 
 def main(xl_file):
     xlwb = utils.open_excel_out_file(xl_file)
@@ -200,9 +250,9 @@ def main(xl_file):
     components = parse_components(xlwb, MandatorySheets[0])
     link_sects = parse_linker_section(xlwb, MandatorySheets[1])
     populate_ram_flash_sections(xlwb, MandatorySheets[2])
-    cmp_brk_up = compute_comp_breakup(components, link_sects)
 
-    #print(cmp_brk_up)
+    compute_comp_breakup(components, link_sects)
+    add_comp_breakup_to_xl(xlwb)
 
 
 
