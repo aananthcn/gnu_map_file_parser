@@ -31,6 +31,8 @@ import utils
 
 
 MandatorySheets = ["Components", "LinkerSections", "SectionDict"]
+RAM_Sections = []
+FlashSections = []
 
 def validate_input(wb, xl_file):
     sheetnames = wb.sheetnames
@@ -92,12 +94,82 @@ def parse_components(wb, sheetname):
     return components
 
 
+
+def populate_ram_flash_sections(wb, sheetname):
+    rcol, row = utils.locate_heading_column("RAM", wb, sheetname)
+    fcol, row = utils.locate_heading_column("Flash", wb, sheetname)
+
+    sheet = wb[sheetname]
+    rrows = len(sheet[chr(rcol)])
+    frows = len(sheet[chr(fcol)])
+    rows = max(rrows, frows)
+    for i in range(row+1, rows):
+        ram = sheet[chr(rcol)+str(i)].value
+        if ram != None:
+            RAM_Sections.append(ram)
+        flash = sheet[chr(fcol)+str(i)].value
+        if flash != None:
+            FlashSections.append(flash)
+
+
+
 def get_ram_flash_from_ls(obj, ls, ls_list):
+    ram = 0
+    flash = 0
     if obj != None:
-        print("\t", obj)
+        for item in ls_list:
+            if obj == item["file"]:
+                if item["section"] == None:
+                    print("Error: input section without section name in", item["file"])
+                    continue
+                # all set, let us search item["section"] in RAM and Flash
+                found = False
+                # check if this is in RAM
+                for rs in RAM_Sections:
+                    if item["section"].startswith(rs):
+                        found = True
+                        ram += item["size"]
+                        break
+                # if found in RAM section, avoid searching in Flash
+                if found:
+                    continue
+
+                # check if this is in flash
+                for fs in FlashSections:
+                    if item["section"].startswith(fs):
+                        found = True
+                        flash += item["size"]
+                        break
+                # raise error if still not found
+                if not found:
+                    print("Warning:", item["section", "is not part of RAM or Flash!"])
+        print("\t", obj, " RAM:", ram, " Flash:", flash)
     if ls != None:
-        print("\t", "["+ls+"]")
-    return 0, 0
+        for item in ls_list:
+            if item["section"].startswith(ls):
+                # all set, let us search item["section"] in RAM and Flash
+                found = False
+                # check if this is in RAM
+                for rs in RAM_Sections:
+                    if item["section"].startswith(rs):
+                        found = True
+                        ram += item["size"]
+                        break
+                # if found in RAM section, avoid searching in Flash
+                if found:
+                    continue
+
+                # check if this is in flash
+                for fs in FlashSections:
+                    if item["section"].startswith(fs):
+                        found = True
+                        flash += item["size"]
+                        break
+                # raise error if still not found
+                if not found:
+                    print("Warning:", item["section", "is not part of RAM or Flash!"])
+        print("\t", "["+ls+"]", " RAM:", ram, " Flash:", flash)
+    return ram, flash
 
 
 
@@ -112,18 +184,22 @@ def compute_comp_breakup(components, linker_sections):
             for mod in cmp["modules"]:
                 if mod != None and mod.split('.')[-1] in ignore:
                     continue
+                mod = mod.split('.')[0]+".o"
                 ram, flash = get_ram_flash_from_ls(mod, None, linker_sections)
         if cmp["section"] != None:
             for sec in cmp["section"]:
                 ram, flash = get_ram_flash_from_ls(None, sec, linker_sections)
 
 
+
 def main(xl_file):
     xlwb = utils.open_excel_out_file(xl_file)
     if 0 != validate_input(xlwb, xl_file):
         return -1
+    
     components = parse_components(xlwb, MandatorySheets[0])
     link_sects = parse_linker_section(xlwb, MandatorySheets[1])
+    populate_ram_flash_sections(xlwb, MandatorySheets[2])
     cmp_brk_up = compute_comp_breakup(components, link_sects)
 
     #print(cmp_brk_up)
