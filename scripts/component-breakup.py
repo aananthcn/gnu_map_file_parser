@@ -108,7 +108,7 @@ def populate_ram_flash_sections(wb, sheetname):
     rrows = len(sheet[chr(rcol)])
     frows = len(sheet[chr(fcol)])
     rows = max(rrows, frows)
-    for i in range(row+1, rows):
+    for i in range(row+1, rows+1):
         ram = sheet[chr(rcol)+str(i)].value
         if ram != None:
             RAM_Sections.append(ram)
@@ -117,8 +117,7 @@ def populate_ram_flash_sections(wb, sheetname):
             FlashSections.append(flash)
 
 
-
-def get_ram_flash_from_ls(obj, ls, ls_list):
+def get_ram_flash_from_objfile(obj, ls_list):
     ram = 0
     flash = 0
     if obj != None:
@@ -148,6 +147,13 @@ def get_ram_flash_from_ls(obj, ls, ls_list):
                 # raise error if still not found
                 if not found:
                     print("Warning:", item["section", "is not part of RAM or Flash!"])
+    return ram, flash
+
+
+
+def get_ram_flash_from_ls(ls, ls_list):
+    ram = 0
+    flash = 0
     if ls != None:
         for item in ls_list:
             if item["section"].startswith(ls):
@@ -173,6 +179,8 @@ def get_ram_flash_from_ls(obj, ls, ls_list):
                 if not found:
                     print("Warning:", item["section"], "is not part of RAM or Flash! "+
                     str(item["size"]) + " bytes goes unaccounted!\n")
+                    print("RAM_Sections", RAM_Sections)
+                    print("FlashSections", FlashSections)
     return ram, flash
 
 
@@ -204,17 +212,19 @@ def compute_comp_breakup(components, linker_sections):
 
     for cmp in components:
         add_data_to_comp_breakup(cmp["component"], None, 0, 0)
+        # search for files
         if cmp["modules"] != None:
             for mod in cmp["modules"]:
                 if mod != None and mod.split('.')[-1] in ignore:
                     continue
                 mod = mod.split('.')[0]+".o"
-                ram, flash = get_ram_flash_from_ls(mod, None, linker_sections)
+                ram, flash = get_ram_flash_from_objfile(mod, linker_sections)
                 if ram != 0 or flash != 0:
                     add_data_to_comp_breakup(cmp["component"], mod, ram, flash)
+        # search for section names
         if cmp["section"] != None:
             for sec in cmp["section"]:
-                ram, flash = get_ram_flash_from_ls(None, sec, linker_sections)
+                ram, flash = get_ram_flash_from_ls(sec, linker_sections)
                 if ram != 0 or flash != 0:
                     add_data_to_comp_breakup(cmp["component"], sec, ram, flash)
 
