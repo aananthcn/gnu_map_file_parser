@@ -12,6 +12,10 @@ def parse_discarded_input_sections(line1, line2, end, wb):
         print(Fore.YELLOW +"parse_discarded_input_sections: if line 2 has 2 segments, then line1 shall have at least 1 segments")
         return 0
 
+    # following line is added to remove lines with "(size before relaxing)" with no useful content
+    if "(size before relaxing)" in line2:
+        return 0
+
     # Excel output preparation
     sheetname = "DiscardedSections"
     active_rows = 0
